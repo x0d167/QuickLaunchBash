@@ -100,9 +100,6 @@ checkEnv() {
 installDepend() {
     ## Check for dependencies.
     DEPENDENCIES='bash bash-completion tar batcat tree multitail fastfetch wget unzip fontconfig stow'
-    if ! command_exists nvim; then
-        DEPENDENCIES="${DEPENDENCIES} neovim"
-    fi
 
     echo "${YELLOW}Installing dependencies...${RC}"
     if [ "$PACKAGER" = "pacman" ]; then
@@ -207,37 +204,60 @@ installRust() {
 }
 
 install_additional_dependencies() {
-    # we have PACKAGER so just use it
-    # for now just going to return early as we have already installed neovim in `installDepend`
-    # so I am not sure why we are trying to install it again
-    return
-    case "$PACKAGER" in
-    *apt)
-        if [ ! -d "/opt/neovim" ]; then
-            curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
+    # Only install Neovim if it's not already installed
+    if ! command_exists nvim; then
+        echo "${YELLOW}Installing Neovim...${RC}"
+
+        case "$PACKAGER" in
+        *apt | *nala)
+            # For apt/nala-based systems, install the latest AppImage version
+            echo "${YELLOW}Installing latest Neovim AppImage...${RC}"
+            # Download the latest Neovim AppImage
+            curl -L -o nvim.appimage https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage
+
+            # Make it executable
             chmod u+x nvim.appimage
-            ./nvim.appimage --appimage-extract
-            ${SUDO_CMD} mv squashfs-root /opt/neovim
-            ${SUDO_CMD} ln -s /opt/neovim/AppRun /usr/bin/nvim
-        fi
-        ;;
-    *zypper)
-        ${SUDO_CMD} zypper refresh
-        ${SUDO_CMD} zypper -n install neovim # -y doesn't work on opensuse -n is short for -non-interactive which is equivalent to -y
-        ;;
-    *dnf)
-        ${SUDO_CMD} dnf check-update
-        ${SUDO_CMD} dnf install -y neovim
-        ;;
-    *pacman)
-        ${SUDO_CMD} pacman -Syu
-        ${SUDO_CMD} pacman -S --noconfirm neovim
-        ;;
-    *)
-        echo "No supported package manager found. Please install neovim manually."
-        exit 1
-        ;;
-    esac
+
+            # Move it to /usr/local/bin/nvim
+            ${SUDO_CMD} mv nvim.appimage /usr/local/bin/nvim
+
+            echo "${GREEN}Neovim AppImage installed to /usr/local/bin/nvim${RC}"
+            ;;
+        *zypper)
+            ${SUDO_CMD} zypper refresh
+            ${SUDO_CMD} zypper -n install neovim
+            ;;
+        *dnf)
+            ${SUDO_CMD} dnf check-update
+            ${SUDO_CMD} dnf install -y neovim
+            ;;
+        *pacman)
+            ${SUDO_CMD} pacman -Syu
+            ${SUDO_CMD} pacman -S --noconfirm neovim
+            ;;
+        *)
+            echo "${YELLOW}No specific Neovim installation method for $PACKAGER.${RC}"
+            echo "${YELLOW}Attempting to install using package manager...${RC}"
+            ${SUDO_CMD} ${PACKAGER} install -y neovim
+
+            if ! command_exists nvim; then
+                echo "${YELLOW}Package manager installation failed. Installing AppImage version...${RC}"
+                # Download the latest Neovim AppImage
+                curl -L -o nvim.appimage https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage
+
+                # Make it executable
+                chmod u+x nvim.appimage
+
+                # Move it to /usr/local/bin/nvim
+                ${SUDO_CMD} mv nvim.appimage /usr/local/bin/nvim
+
+                echo "${GREEN}Neovim AppImage installed to /usr/local/bin/nvim${RC}"
+            fi
+            ;;
+        esac
+    else
+        echo "${GREEN}Neovim already installed, skipping...${RC}"
+    fi
 }
 
 setup_dotfiles() {
