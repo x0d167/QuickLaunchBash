@@ -1,3 +1,5 @@
+## Abandoned this mess for a fresh start with my bootstrap and pybootstrap. More success there.
+
 ## Overview of `.bashrc` Configuration
 
 This has been copied and modified FOR ME from https://github.com/christitustech/mybash
